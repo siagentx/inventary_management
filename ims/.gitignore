@@ -1,0 +1,39 @@
+# Virtual environment
+venv/
+.venv/
+
+# Environment files
+.env
+.env.prod
+.env.test
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Pytest
+.pytest_cache/
+
+# Coverage
+.coverage
+htmlcov/
+.coverage.*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+*.log
+app/logs/
+generated_pdfs/
+test.db
+
+# Celery
+celerybeat-schedule
+celerybeat.pid

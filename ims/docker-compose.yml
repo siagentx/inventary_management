@@ -1,0 +1,149 @@
+version: "3.9"
+
+services:
+
+  db:
+    image: postgres:16
+    container_name: ims-postgres
+    restart: always
+
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ims
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ims"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+  redis:
+    image: redis:7-alpine
+    container_name: ims-redis
+    restart: always
+
+    ports:
+      - "6379:6379"
+
+
+  api:
+    build: .
+    container_name: ims-api
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+    ports:
+      - "8001:8000"
+
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/ims
+      REDIS_URL: redis://redis:6379/0
+
+      MAIL_USERNAME: ganeshkumar310300@gmail.com
+      MAIL_PASSWORD: ibqh tvdu idrl lwet
+      MAIL_FROM: ganeshkumar310300@gmail.com
+      MAIL_PORT: 587
+      MAIL_SERVER: smtp.gmail.com
+      MAIL_STARTTLS: "True"
+      MAIL_SSL_TLS: "False"
+
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+
+  celery:
+    build: .
+    container_name: ims-celery
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/ims
+      REDIS_URL: redis://redis:6379/0
+
+      MAIL_USERNAME: ganeshkumar310300@gmail.com
+      MAIL_PASSWORD: ibqh tvdu idrl lwet
+      MAIL_FROM: ganeshkumar310300@gmail.com
+      MAIL_PORT: 587
+      MAIL_SERVER: smtp.gmail.com
+      MAIL_STARTTLS: "True"
+      MAIL_SSL_TLS: "False"
+
+    command: celery -A app.celery_app.celery_app worker --loglevel=info
+
+
+  celery-beat:
+    build: .
+    container_name: ims-celery-beat
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/ims
+      REDIS_URL: redis://redis:6379/0
+
+      MAIL_USERNAME: ganeshkumar310300@gmail.com
+      MAIL_PASSWORD: ibqh tvdu idrl lwet
+      MAIL_FROM: ganeshkumar310300@gmail.com
+      MAIL_PORT: 587
+      MAIL_SERVER: smtp.gmail.com
+      MAIL_STARTTLS: "True"
+      MAIL_SSL_TLS: "False"
+
+    command: celery -A app.celery_app.celery_app beat --loglevel=info
+
+    volumes:
+      - .:/app
+
+
+  flower:
+    image: mher/flower:2.0
+    container_name: ims-flower
+
+    depends_on:
+      - redis
+      - celery
+
+    command: >
+      celery
+      --broker=redis://redis:6379/0
+      flower
+      --port=5555
+
+    ports:
+      - "5555:5555"
+
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: ims-redis-insight
+    restart: always
+
+    ports:
+      - "5540:5540"
+
+    depends_on:
+      - redis
+
+
+volumes:
+  postgres_data:
